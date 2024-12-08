@@ -345,3 +345,13 @@ body {
         height: 150px;
     }
 } 
+
+#end-turn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #666;
+}
+
+#end-turn.disabled:hover {
+    background-color: #666;
+} 

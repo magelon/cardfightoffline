@@ -63,6 +63,7 @@ class Game {
         // Add new turn state properties
         this.hasPlayedMonster = false;
         this.hasAttacked = false;
+        this.needsNewMonster = false;
         
         this.logContent = document.querySelector('.log-content');
         
@@ -133,30 +134,33 @@ class Game {
         });
 
         document.getElementById('end-turn').addEventListener('click', () => {
-            if (this.isPlayerTurn) {
-                this.isPlayerTurn = false;
-                this.computerTurn();
+            if (!this.isPlayerTurn) return;
+            
+            // Check if player has a monster on field
+            if (this.playerField.length === 0) {
+                alert('You must summon a monster before ending your turn!');
+                return;
             }
+            
+            this.isPlayerTurn = false;
+            this.computerTurn();
         });
-
-        // Remove the turnStart event listener since we're calling startPlayerTurn directly
     }
 
     startPlayerTurn() {
-        this.hasPlayedMonster = false;
         this.hasAttacked = false;
+        if (!this.needsNewMonster) {
+            this.hasPlayedMonster = false;
+        }
         
-        // Check if deck is empty
+        // Draw a card
         if (this.deck.length === 0) {
-            console.log('Deck is empty! Reshuffling...');
             this.reshuffleDeck();
         }
-
-        // Draw a card
         if (this.deck.length > 0) {
             const drawnCard = this.deck.pop();
             this.playerHand.push(drawnCard);
-            console.log('Player drew:', drawnCard.name, 'Deck size:', this.deck.length);
+            this.addLogEntry(`You drew ${drawnCard.name}!`, 'player');
             this.updateGameState();
         }
     }
@@ -165,10 +169,11 @@ class Game {
         if (this.playerHand[index]) {
             const card = this.playerHand[index];
             if (card.type === 'monster') {
-                if (!this.hasPlayedMonster && this.playerField.length === 0) {
+                if ((!this.hasPlayedMonster && this.playerField.length === 0) || this.needsNewMonster) {
                     this.playerField.push(card);
                     this.playerHand.splice(index, 1);
                     this.hasPlayedMonster = true;
+                    this.needsNewMonster = false;
                     this.addLogEntry(`You summoned ${card.name}!`, 'player');
                 } else if (this.playerField.length > 0) {
                     alert('You can only have one monster on the field!');
@@ -286,6 +291,8 @@ class Game {
                 this.playerField = [];
                 this.monstersDefeatedByComputer++;
                 this.addLogEntry(`Your ${defender.name} was defeated!`, 'battle');
+                this.needsNewMonster = true;
+                this.hasPlayedMonster = false;
             }
             if (attacker.health <= 0) {
                 this.computerField = [];
@@ -324,6 +331,8 @@ class Game {
                 this.playerField = [];
                 this.monstersDefeatedByComputer++;
                 this.addLogEntry(`Your ${attacker.name} was defeated!`, 'battle');
+                this.needsNewMonster = true;
+                this.hasPlayedMonster = false;
             }
             
             this.hasAttacked = true;
@@ -361,7 +370,9 @@ class Game {
         const computerFieldElement = document.querySelector('.computer-field');
         
         // Clear field messages first
-        playerFieldElement.innerHTML = '<div class="field-message">Your Monster (Click to Attack)</div>';
+        playerFieldElement.innerHTML = '<div class="field-message">' + 
+            (this.needsNewMonster ? 'Place a new monster!' : 'Your Monster (Click to Attack)') + 
+            '</div>';
         computerFieldElement.innerHTML = '<div class="field-message">Computer\'s Monster</div>';
         
         // Add monster cards if they exist
@@ -376,6 +387,18 @@ class Game {
         // Update defeat counters
         document.getElementById('player-defeated').textContent = this.monstersDefeatedByPlayer;
         document.getElementById('computer-defeated').textContent = this.monstersDefeatedByComputer;
+
+        // Update end turn button state
+        const endTurnButton = document.getElementById('end-turn');
+        if (this.isPlayerTurn && this.playerField.length === 0) {
+            endTurnButton.classList.add('disabled');
+            endTurnButton.style.opacity = '0.5';
+            endTurnButton.style.cursor = 'not-allowed';
+        } else {
+            endTurnButton.classList.remove('disabled');
+            endTurnButton.style.opacity = '1';
+            endTurnButton.style.cursor = 'pointer';
+        }
     }
 
     checkWinCondition() {
@@ -399,6 +422,7 @@ class Game {
         this.hasPlayedMonster = false;
         this.hasAttacked = false;
         this.isPlayerTurn = true;
+        this.needsNewMonster = false;
         this.initializeGame();
     }
 
